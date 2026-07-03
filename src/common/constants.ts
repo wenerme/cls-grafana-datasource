@@ -25,14 +25,14 @@ export enum SearchSyntaxRule {
 
 // the services of tencentcloud monitor api
 const FINANCE_REGIONS = ['ap-shanghai-fsi', 'ap-shenzhen-fsi'];
-const SERVICES_API_INFO: {
-  [service: string]: {
-    service: string;
-    version: string;
-    path: string;
-    host: string;
-  };
-} = {
+export type ServiceAPIInfo = {
+  service: string;
+  version: string;
+  path: string;
+  host: string;
+};
+
+const SERVICES_API_INFO: Record<string, ServiceAPIInfo> = {
   api: {
     service: 'api',
     version: '2020-11-06',
@@ -461,9 +461,32 @@ const FINANCE_HOST = {
   },
 };
 
+export function normalizeServiceType(service: unknown): string {
+  return String(service || '')
+    .trim()
+    .toLowerCase();
+}
+
 // 获取对应业务的 API 接口信息
-export function GetServiceAPIInfo(service: string, region?: string) {
-  return { ...(SERVICES_API_INFO[service] || {}), ...getHostAndPath(service, region) };
+export function GetServiceAPIInfo(service: string, region?: string): Partial<ServiceAPIInfo> {
+  return {
+    ...(SERVICES_API_INFO[normalizeServiceType(service)] || {}),
+    ...getHostAndPath(normalizeServiceType(service), region),
+  };
+}
+
+export function GetValidatedServiceAPIInfo(service: string, region?: string): ServiceAPIInfo {
+  const serviceType = normalizeServiceType(service);
+  const serviceInfo = GetServiceAPIInfo(serviceType, region);
+  const missingKeys = (['service', 'host', 'path', 'version'] as const).filter((key) => !serviceInfo[key]);
+  if (missingKeys.length > 0) {
+    throw new Error(
+      `Unsupported or incomplete Tencent Cloud API ServiceType "${serviceType || String(service)}". Missing ${missingKeys.join(
+        ', ',
+      )}.`,
+    );
+  }
+  return serviceInfo as ServiceAPIInfo;
 }
 // get host and path for finance regions
 function getHostAndPath(service: string, region?: string) {
@@ -493,11 +516,12 @@ export async function GetRequestParams(
   secretId: string,
   ds: DataSourceWithBackend<any, any>,
 ) {
+  const serviceInfo = GetValidatedServiceAPIInfo(service, signObj.region);
   const signParams = {
     secretId,
     payload: options.data || '',
     ...signObj,
-    ...(_.pick(GetServiceAPIInfo(service, signObj.region), ['service', 'host', 'version']) || {}),
+    ..._.pick(serviceInfo, ['service', 'host', 'version']),
     ds,
   };
   const sign = new Sign(signParams);

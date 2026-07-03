@@ -2,7 +2,7 @@ import { DataQueryResponse, DataSourceApi, DataSourceInstanceSettings } from '@g
 import { getTemplateSrv, DataSourceWithBackend } from '@grafana/runtime';
 import _ from 'lodash-es';
 
-import { sliceLength } from '../common/constants';
+import { normalizeServiceType, sliceLength } from '../common/constants';
 import { capiRequest } from '../common/model';
 import { MyDataSourceOptions, QueryInfo } from '../types';
 
@@ -66,7 +66,9 @@ export class CloudApiDataSourcce extends DataSourceApi<QueryInfo, MyDataSourceOp
    */
   async metricFindQuery(query: string) {
     const queries = ParseMetricQuery(query) as MetricQuery;
-    const { action, servicetype: serviceType, display, payload = {}, field, id, name } = queries;
+    const serviceType = normalizeServiceType(queries.servicetype);
+    const action = _.trim(String(queries.action || ''));
+    const { display, payload = {}, field, id, name } = queries;
     let { region } = queries;
     if (!serviceType || !action) {
       throw new Error('Must include Region, ServiceType and Action.');
@@ -84,14 +86,14 @@ export class CloudApiDataSourcce extends DataSourceApi<QueryInfo, MyDataSourceOp
     // 查询地域列表
     const regionQuery = action.match(/^DescribeRegions$/i);
     if (regionQuery) {
-      return this.getRegions({ ...queries, region });
+      return this.getRegions({ ...queries, region, action, servicetype: serviceType });
     }
 
     // 查询实例列表
     if (!id || !name || !field) {
       throw new Error('Must include field, id and name.');
     }
-    const result = await this.getVariableInstances({ ...queries, region });
+    const result = await this.getVariableInstances({ ...queries, region, action, servicetype: serviceType });
 
     return result.flatMap((item) => {
       const insAlias = this.formatVarDisplay(item, display, name);

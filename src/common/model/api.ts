@@ -5,7 +5,7 @@ import _ from 'lodash-es';
 import { IApiError, IRegionItem, IResourceRegionInfo } from './interface';
 import * as TYPES from './types';
 import { MyDataSourceOptions } from '../../types';
-import { GetRequestParams, GetServiceAPIInfo } from '../constants';
+import { GetRequestParams, GetValidatedServiceAPIInfo, normalizeServiceType } from '../constants';
 
 /**
  * 云API请求
@@ -38,11 +38,12 @@ interface IRequestOpts {
  */
 export async function capiRequest({ serviceType, region, action, data }: ICapiRequestParam, opts: IRequestOpts) {
   const { instanceSettings, ds } = opts;
-  const serviceInfo = GetServiceAPIInfo(serviceType, region);
+  const normalizedServiceType = normalizeServiceType(serviceType);
+  const serviceInfo = GetValidatedServiceAPIInfo(normalizedServiceType, region);
   const backendSrc = getBackendSrv();
   const requestOptions = await GetRequestParams(
     { url: instanceSettings.url + serviceInfo.path, data },
-    serviceType,
+    normalizedServiceType,
     {
       region: getTemplateSrv().replace(region),
       action,
