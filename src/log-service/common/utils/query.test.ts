@@ -5,8 +5,8 @@ const d = (n: number) => n * 86_400_000;
 
 describe('calcClsInterval', () => {
   // rawSeconds = ceil(rangeMs / 150 / 1000)
-  it('1h range → 24 second  (3600000/150/1000 = 24)', () => {
-    expect(calcClsInterval(0, h(1))).toBe('24 second');
+  it('1h range → 60 second due to 1m minimum  (3600000/150/1000 = 24)', () => {
+    expect(calcClsInterval(0, h(1))).toBe('60 second');
   });
 
   it('6h range → 144 second  (21600000/150/1000 = 144)', () => {
@@ -25,13 +25,13 @@ describe('calcClsInterval', () => {
     expect(calcClsInterval(0, d(30))).toBe('17280 second');
   });
 
-  it('very short range → 1 second (minimum)', () => {
-    expect(calcClsInterval(0, 1000)).toBe('1 second');
+  it('very short range → 60 second (minimum)', () => {
+    expect(calcClsInterval(0, 1000)).toBe('60 second');
   });
 
   it('respects custom maxDataPoints', () => {
-    // 6h / 1000 = 21.6s → ceil = 22 second
-    expect(calcClsInterval(0, h(6), 1000)).toBe('22 second');
+    // 6h / 1000 = 21.6s → ceil = 22 second, then min 60 second
+    expect(calcClsInterval(0, h(6), 1000)).toBe('60 second');
   });
 
   it('works with non-zero from', () => {
@@ -103,7 +103,7 @@ describe('replaceClsSqlMacros interval aliases', () => {
 
   it('$__cls_interval_ms is not corrupted by $__cls_interval replacement', () => {
     const query = '$__cls_interval_ms $__cls_interval $__interval_ms $__interval';
-    expect(replaceClsSqlMacros(query, 0, h(1))).toBe('24000 24 second 24000 24 second');
+    expect(replaceClsSqlMacros(query, 0, h(1))).toBe('60000 60 second 60000 60 second');
   });
 
   it('keeps deprecated replaceClsIntervalMacro compatible', () => {
@@ -132,7 +132,7 @@ describe('replaceClsSqlMacros Grafana SQL time macros', () => {
   it('uses $__interval when $__timeGroup interval argument is omitted', () => {
     const query = '* | select $__timeGroupAlias(__TIMESTAMP__), count(*) group by time';
     expect(replaceClsSqlMacros(query, fromMs, toMs, 1000)).toBe(
-      '* | select histogram(cast(__TIMESTAMP__ as timestamp), interval 22 second) as time, count(*) group by time',
+      '* | select histogram(cast(__TIMESTAMP__ as timestamp), interval 60 second) as time, count(*) group by time',
     );
   });
 

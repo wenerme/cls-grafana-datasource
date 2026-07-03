@@ -3,6 +3,7 @@ import { getTemplateSrv } from '@grafana/runtime';
 import { QueryInfo } from '../../../types';
 
 const DEFAULT_MAX_DATA_POINTS = 150;
+const MIN_INTERVAL_SECONDS = 60;
 const MS_PER_SECOND = 1000;
 const NS_PER_MS = 1_000_000;
 
@@ -40,10 +41,10 @@ type MacroContext = {
  * divisor for TPM/RPM rate normalization, giving consistent values across
  * different time range selections.
  *
- * Minimum bucket is 1 second.
+ * Minimum bucket is 1 minute.
  *
  * @example
- * calcClsInterval(0, 3_600_000)     // "24 second"  (1 h / 150)
+ * calcClsInterval(0, 3_600_000)     // "60 second"  (min 1 minute)
  * calcClsInterval(0, 21_600_000)    // "144 second" (6 h / 150)
  * calcClsInterval(0, 86_400_000)    // "576 second" (24 h / 150)
  */
@@ -128,7 +129,7 @@ export function replaceClsIntervalMacro(
 }
 
 function getRawIntervalSeconds({ fromMs, toMs, maxDataPoints = DEFAULT_MAX_DATA_POINTS }: MacroContext): number {
-  return Math.max(1, Math.ceil((toMs - fromMs) / maxDataPoints / MS_PER_SECOND));
+  return Math.max(MIN_INTERVAL_SECONDS, Math.ceil((toMs - fromMs) / maxDataPoints / MS_PER_SECOND));
 }
 
 function replaceIntervalTokens(queryString: string, context: MacroContext): string {
