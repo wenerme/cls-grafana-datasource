@@ -7,6 +7,20 @@ const HttpRequestMethod = 'POST';
 const CanonicalUri = '/';
 const CanonicalQueryString = '';
 const ContentType = 'application/json';
+const ClsAPIVersion = '2020-10-16';
+
+function normalizeService(service: unknown): string {
+  return String(service || '')
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeAPIVersion(service: string, version: unknown): string {
+  if (service === 'cls') {
+    return ClsAPIVersion;
+  }
+  return String(version || '').trim();
+}
 
 export default class Sign {
   /**
@@ -48,10 +62,10 @@ export default class Sign {
     const { secretId, service, action, host, version, payload = '', region, ds } = options;
     this.secretId = secretId;
     // this.secretKey = secretKey;
-    this.service = service;
+    this.service = normalizeService(service);
     this.action = action;
     this.host = host;
-    this.version = version;
+    this.version = normalizeAPIVersion(this.service, version);
     this.payload = typeof payload === 'string' ? payload : JSON.stringify(payload);
     this.region = region;
     const nowDate = moment().utc();
@@ -65,7 +79,7 @@ export default class Sign {
   }
 
   async getResourceHeader() {
-    let res: { authorization?: string; token?: string; intranet?: boolean; host?: string } = {};
+    let res: { authorization?: string; token?: string; intranet?: boolean; host?: string; version?: string } = {};
     try {
       res = await this.ds.postResource('sign_v3', {
         Host: this.host,
@@ -86,14 +100,15 @@ export default class Sign {
     } catch (err) {
       console.error(err);
     }
-    const { authorization, token, intranet, host } = res;
+    const { authorization, token, intranet, host, version } = res;
+    const effectiveVersion = normalizeAPIVersion(this.service, version || this.version);
     const headers = {
       Authorization: authorization,
       'Content-Type': ContentType,
       Host: host,
       'X-TC-Action': this.action,
       'X-TC-Timestamp': this.timestamp.toString(),
-      'X-TC-Version': this.version,
+      'X-TC-Version': effectiveVersion,
       'X-TC-RequestClient': getRequestClient(),
       ...(this.region && {
         'X-TC-Region': this.region,

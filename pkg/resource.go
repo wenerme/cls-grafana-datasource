@@ -13,6 +13,7 @@ import (
 type SignResultV3 struct {
 	Authorization string `json:"authorization"`
 	Token         string `json:"token"`
+	Version       string `json:"version"`
 
 	Host     string `json:"host"`
 	Intranet bool   `json:"intranet"`
@@ -25,6 +26,8 @@ type SignResultV2 struct {
 	Path     string `json:"path"`
 	Intranet bool   `json:"intranet"`
 }
+
+const clsAPIVersion = "2020-10-16"
 
 func newResourceHandler(ds *clsDatasource) backend.CallResourceHandler {
 	mux := http.NewServeMux()
@@ -66,6 +69,9 @@ func (ds *clsDatasource) getSigned(isV3 bool, req *http.Request) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
+	if isV3 {
+		normalizeSignOpts(&query)
+	}
 	datasourceInstanceSettings := httpadapter.PluginConfigFromContext(req.Context()).DataSourceInstanceSettings
 	apiOpts := getInsSetting(*datasourceInstanceSettings)
 	shouldUseIntranet := false
@@ -95,7 +101,16 @@ func (ds *clsDatasource) getSigned(isV3 bool, req *http.Request) (interface{}, e
 	return &SignResultV3{
 		Authorization: signed,
 		Token:         apiOpts.Token,
+		Version:       query.Version,
 		Host:          query.Host,
 		Intranet:      shouldUseIntranet,
 	}, nil
+}
+
+func normalizeSignOpts(opts *signOpts) {
+	opts.Service = strings.ToLower(strings.TrimSpace(opts.Service))
+	opts.Version = strings.TrimSpace(opts.Version)
+	if opts.Service == "cls" {
+		opts.Version = clsAPIVersion
+	}
 }
