@@ -92,6 +92,9 @@ func newSignerV2(defaults signerV2Opt) *signerV2 {
 	_ = json.Unmarshal(b, &params)
 
 	params["Timestamp"] = strconv.Itoa(int(ins.opt.Timestamp))
+	if ins.opt.Version != "" {
+		params["Version"] = ins.opt.Version
+	}
 
 	for k, v := range defaults.Data {
 		params[k] = v

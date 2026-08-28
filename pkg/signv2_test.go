@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/tencentcloud/tencent-cls-grafana-datasource/pkg/common"
 	"testing"
 )
@@ -26,5 +25,7 @@ func TestSignerV2(t *testing.T) {
 	}
 
 	res := signV2(signOpts, apiOpts)
-	fmt.Println(res)
+	if res.Querystring["Version"] != "2018-10-01" {
+		t.Fatalf("Version = %q, want %q", res.Querystring["Version"], "2018-10-01")
+	}
 }
